@@ -5,6 +5,7 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/crowdsale/emission/MintedCrowdsale.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/crowdsale/validation/CappedCrowdsale.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/crowdsale/validation/TimedCrowdsale.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/crowdsale/validation/WhitelistCrowdsale.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/crowdsale/distribution/RefundablePostDeliveryCrowdsale.sol";
 
 contract ArhamCoinSale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, RefundablePostDeliveryCrowdsale {
@@ -28,22 +29,24 @@ contract ArhamCoinSale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrow
         uint rate, // rate in TKNbits
         address payable wallet, // sale beneficiary
         ArhamCoin token, // the ArhamCoin itself that the ArhamCoinSale will work with
-        uint goal,
-        uint open,
-        uint close,
-        address _foundationFounds,
+        uint _cap,
+        uint _openingTime,
+        uint _closingTime,
+        uint _goal,
+        address _foundersFounds,
         address _charitableFounds,
         address _advisorsFound,
         address _bountyFounds,
         address _bonusFounds
     )
         Crowdsale(rate, wallet, token)
-        CappedCrowdsale(goal)
-        TimedCrowdsale(open, close)
-        RefundableCrowdsale(goal)
+        CappedCrowdsale(_cap)
+        TimedCrowdsale(_openingTime, _closingTime)
+        RefundableCrowdsale(_goal)
         public
-    {
-        foundationFound = _foundationFounds;
+    {   
+        require (_goal <= _cap);
+        foundersFound = _foundersFounds;
         charitableFound = _charitableFounds;
         advisorsFound = _advisorsFound;
         bountyFounds = _bountyFounds;
@@ -76,4 +79,37 @@ contract ArhamCoinSaleDeployer {
         token.addMinter(token_sale_address);
         token.renounceMinter();
     }
+    
+    /**
+   * @dev enables token transfers, called when owner calls finalize()
+  */
+  function finalization() internal {
+//    if(goalReached()) {
+//      MintableToken _mintableToken = MintableToken(token);
+      uint256 _alreadyMinted = _mintableToken.totalSupply();
+
+      uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
+
+      foundersTimelock   = new TokenTimelock(token, _foundersFund, releaseTime);
+      charitableTimelock = new TokenTimelock(token, _charitableFounds, releaseTime);
+      advasiorsTimelock   = new TokenTimelock(token, _advisorsFound, releaseTime);
+      bountyTimelock   = new TokenTimelock(token, _bountyFounds, releaseTime);
+      bonusTimelock   = new TokenTimelock(token, _bonusFounds, releaseTime);
+
+      _mintableToken.mint(address(foundersTimelock),   _finalTotalSupply.mul(foundersPercentage).div(100));
+      _mintableToken.mint(address(charitableTimelock), _finalTotalSupply.mul(charitablePercentage).div(100));
+      _mintableToken.mint(address(advasiorsTimelock),   _finalTotalSupply.mul(advisorsPercentage).div(100));
+      _mintableToken.mint(address(bountyTimelock),   _finalTotalSupply.mul(bountyPercentage).div(100));
+      _mintableToken.mint(address(bonusTimelock),   _finalTotalSupply.mul(bonusPercentage).div(100));
+
+      _mintableToken.finishMinting();
+      // Unpause the token
+      PausableToken _pausableToken = PausableToken(token);
+      _pausableToken.unpause();
+      _pausableToken.transferOwnership(wallet);
+    }
+
+    super.finalization();
+  }
+
 }
