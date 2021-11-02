@@ -9,13 +9,33 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5
 
 contract ArhamCoinSale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, RefundablePostDeliveryCrowdsale {
 
+    // Token Distribution
+  uint256 public contributersPercentage   = 60;
+  uint256 public foundersPercentage       = 12;
+  uint256 public charitablePercentage     = 15;
+  uint256 public advisorsPercentage       = 5;
+  uint256 public bountyPercentage         = 3;
+  uint256 public bonusPercentage          = 5;
+
+  // Token reserve funds
+  address public foundersFound;
+  address public charitableFound;
+  address public advisorsFound;
+  address public bountyFounds;
+  address public bonusFounds;
+  
     constructor(
         uint rate, // rate in TKNbits
         address payable wallet, // sale beneficiary
         ArhamCoin token, // the ArhamCoin itself that the ArhamCoinSale will work with
         uint goal,
         uint open,
-        uint close
+        uint close,
+        address _foundationFounds,
+        address _charitableFounds,
+        address _advisorsFound,
+        address _bountyFounds,
+        address _bonusFounds
     )
         Crowdsale(rate, wallet, token)
         CappedCrowdsale(goal)
@@ -23,7 +43,11 @@ contract ArhamCoinSale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrow
         RefundableCrowdsale(goal)
         public
     {
-        // constructor can stay empty
+        foundationFound = _foundationFounds;
+        charitableFound = _charitableFounds;
+        advisorsFound = _advisorsFound;
+        bountyFounds = _bountyFounds;
+        bonusFounds = _bonusFounds;
     }
 }
 
